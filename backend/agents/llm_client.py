@@ -29,15 +29,15 @@ class AgentShieldLLM:
         self.ollama_base_models = {
             "base": os.getenv("OLLAMA_MODEL"),
             "red": os.getenv("OLLAMA_MODEL"),
-            "blue": "llama3",  
-            "judge": "qwen2"
+            "blue": os.getenv("OLLAMA_MODEL"),  
+            "judge": os.getenv("OLLAMA_MODEL")
         }
 
         self.local_base_models = {
             "base": os.getenv("MODEL_PATH"),
             "red": os.getenv("MODEL_PATH"),
-            "blue": "meta-llama/Meta-Llama-3-8B", 
-            "judge": "Qwen/Qwen2-7B"
+            "blue": os.getenv("MODEL_PATH"), 
+            "judge": os.getenv("OLLAMA_MODEL")
         }
 
         # 어댑터
