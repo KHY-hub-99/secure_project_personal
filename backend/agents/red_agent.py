@@ -4,13 +4,11 @@
 기능별 파이프라인 섹션 2 참조.
 카테고리별 변형 전략을 Red Agent 프롬프트에 포함.
 """
-
-import json
 import sys
-import os
-from llm_client import AgentShieldLLM
 from pyprojroot import here
-root = here()
+root = str(here())
+sys.path.append(root)
+from backend.agents.llm_client import AgentShieldLLM
 
 class RedAgent:
     """

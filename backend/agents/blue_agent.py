@@ -5,9 +5,11 @@
 OWASP 권고 + RAG 유사 방어 + 방어 코드 작성 가이드 → 3종 방어 코드 생성.
 """
 import json
-import pyprojroot
-root = pyprojroot.here()
-from llm_client import AgentShieldLLM
+import sys
+from pyprojroot import here
+root = str(here())
+sys.path.append(root)
+from backend.agents.llm_client import AgentShieldLLM
 
 class BlueAgent:
     """

@@ -4,13 +4,12 @@
 기능별 파이프라인 섹션 7, 세부기획서 섹션 4-3 참조.
 Layer 2 LLM Judge 판정 프롬프트 구성.
 """
-
 import json
-import os
 import sys
 from pyprojroot import here
-root = here()
-from llm_client import AgentShieldLLM
+root = str(here())
+sys.path.append(root)
+from backend.agents.llm_client import AgentShieldLLM
 
 class JudgeAgent:
     """

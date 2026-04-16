@@ -7,12 +7,12 @@ Ollama로 Gemma 4 E2B를 로컬 실행하고, 역할별 LoRA 어댑터를 전환
 import os
 import httpx
 import torch
-from pyprojroot import here
 from dotenv import load_dotenv
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
+from pyprojroot import here
 
-root = here()
+root = str(here())
 load_dotenv()
 
 class AgentShieldLLM:
