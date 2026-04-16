@@ -28,14 +28,14 @@ class AgentShieldLLM:
         # 역할별 베이스 모델
         self.ollama_base_models = {
             "base": os.getenv("OLLAMA_MODEL"),
-            "red": os.getenv("OLLAMA_MODEL"),
+            "red": "dolphin-mistral",
             "blue": os.getenv("OLLAMA_MODEL"),  
             "judge": os.getenv("OLLAMA_MODEL")
         }
 
         self.local_base_models = {
             "base": os.getenv("MODEL_PATH"),
-            "red": os.getenv("MODEL_PATH"),
+            "red": "dphn/dolphin-2.6-mistral-7b",
             "blue": os.getenv("MODEL_PATH"), 
             "judge": os.getenv("OLLAMA_MODEL")
         }
