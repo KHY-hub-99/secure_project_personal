@@ -59,7 +59,7 @@ class Phase2RedNode:
                 # [요청사항] 판정 결과를 JSON 형식으로 출력
                 print(f"> 판정 결과: {json.dumps(judgment_dict, indent=2, ensure_ascii=False)}")
 
-                judgment = judgment_dict.get("judgment", "PASS")
+                judgment = judgment_dict.get("judgment")
                 
                 # 3. 방어 패턴 저장 (데이터셋 축적)
                 save_defense_pattern(category, pre_attack, blue_response, judgment)
@@ -67,6 +67,7 @@ class Phase2RedNode:
                 if judgment == "FAIL":
                     # 방어선 붕괴 시 루프 종료
                     print(f"\n[!] RED WINS: 방어선이 돌파되었습니다.")
+                    save_generated_attack(category, pre_attack, blue_response, round_num)
                     break
                 else:
                     print(f"\n[*] BLUE WINS: 방어 성공. Red Agent가 변형을 시도합니다.")
@@ -81,15 +82,6 @@ class Phase2RedNode:
                     round_num=round_num
                 )
                 print(f"\n> Red Agent (변형 공격): {mutated_attack}")
-
-                # 5. 변형 공격 데이터 저장 (파라미터 5개 일치 확인)
-                save_generated_attack(
-                    category=category,
-                    pre_attack=pre_attack,
-                    blue_response=blue_response,
-                    new_attack=mutated_attack, 
-                    round_num=round_num
-                )
 
                 pre_attack = mutated_attack
     

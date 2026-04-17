@@ -49,7 +49,7 @@ def save_defense_pattern(category:str, attack_payload:str, defense_output:str, j
 
     print(f"[Dataset] 고품질 방어 데이터가 {file_path}에 축적되었습니다.")
 
-def save_generated_attack(category:str, attack_payload:str, target_response:str, round_num:int):
+def save_generated_attack(category:str, attack_payload:str, blue_response:str, round_num:int):
     """
     Red Agent가 타겟을 뚫어내는 데 성공한 '치명적인 변형 공격(Zero-day Payload)'을 영구 저장합니다.
     """
@@ -67,7 +67,7 @@ def save_generated_attack(category:str, attack_payload:str, target_response:str,
         "category": category,
         "round_found": round_num,
         "successful_payload": attack_payload,
-        "target_response": target_response
+        "blue_response": blue_response
     }
     existing_data.append(new_entry)
 
