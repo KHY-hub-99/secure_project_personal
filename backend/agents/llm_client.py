@@ -30,7 +30,7 @@ class AgentShieldLLM:
             "base": os.getenv("OLLAMA_MODEL"),
             "red": os.getenv("OLLAMA_MODEL"), # Red는 검열 없는 돌고래 모델
             "blue": os.getenv("OLLAMA_MODEL"),  
-            "judge": "qwen2.5:0.5b"
+            "judge": "llama-guard3:8b"
         }
 
         # 역할별 베이스 모델 (Local PEFT)
@@ -38,7 +38,7 @@ class AgentShieldLLM:
             "base": os.getenv("MODEL_PATH"),
             "red": os.getenv("MODEL_PATH"),
             "blue": os.getenv("MODEL_PATH"), 
-            "judge": "Qwen/Qwen2.5-0.5B"
+            "judge": "meta-llama/Llama-Guard-3-8B"
         }
 
         # 어댑터 경로
