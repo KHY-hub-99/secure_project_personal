@@ -24,7 +24,7 @@ def load_attack_patterns(category:str=None):
         print(f"[Error] 파일 로드 실패: {str(e)}")
         return []
     
-def save_defense_pattern(category:str, attack_payload:str, defense_output:str):
+def save_defense_pattern(category:str, attack_payload:str, defense_output:str, judgment:str):
     dir_path = os.path.join(root, "data", "defense_patterns")
     os.makedirs(dir_path, exist_ok=True)
 
@@ -39,6 +39,7 @@ def save_defense_pattern(category:str, attack_payload:str, defense_output:str):
         "vulnerability": category,
         "attack_input": attack_payload,
         "blue_response": defense_output,
+        "judgment": judgment,
         "timestamp": str(os.path.getmtime(file_path)) if os.path.exists(file_path) else "new"
     }
     existing_data.append(new_entry)
