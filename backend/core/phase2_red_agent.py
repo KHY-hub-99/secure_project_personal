@@ -50,7 +50,7 @@ class Phase2RedNode:
                 print(f"\n[Round {round_num}]")
                 # 이전 공격을 받고 방어 코드(시스템 패치, 필터 등) 생성
                 print("> Blue Agent: 방어 로직 생성 중...\n")
-                blue_response = self.blue.generate_defense(category, pre_attack, [])
+                blue_response = self.blue.simulate_response(category, pre_attack)
                 print(f"> Blue Agent 응답: {blue_response}\n")
 
                 print("\n> Judge Agent: 판정 중...")
