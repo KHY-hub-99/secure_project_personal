@@ -92,7 +92,7 @@ class BlueAgent:
 
         if self.llm_client:
             # Blue Agent는 빠른 대화형 방어 응답이 목적이므로 chat 인터페이스 직접 호출
-            response = self.llm_client.chat(messages, role="blue", max_tokens=512)
+            response = self.llm_client.chat(messages, role="blue", max_tokens=2048)
             
             # 모델이 가끔 [Response] 같은 접두사를 붙였다면 깔끔하게 제거
             if response.startswith("[Response]"):

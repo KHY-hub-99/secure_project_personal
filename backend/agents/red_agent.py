@@ -88,7 +88,7 @@ class RedAgent:
         ]
 
         if self.llm_client:
-            raw_payload = self.llm_client.chat(messages, role="red", max_tokens=1024)
+            raw_payload = self.llm_client.chat(messages, role="red", max_tokens=2048)
             # LLM Client가 생각 과정은 다 잘라내고 순수 답변만 넘겨줌
             return raw_payload.strip(" `\"'")
 

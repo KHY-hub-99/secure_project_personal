@@ -25,7 +25,7 @@ class Phase2RedNode:
         self.max_mutation_rounds = 5
 
     def run(self, category: str):
-        attack_patterns = load_attack_patterns(category)
+        attack_patterns = load_attack_patterns(category, "colla_v3.json")
         if not attack_patterns:
             print(f"[{category}] 공격 패턴이 없습니다. 데이터를 확인하세요.")
             return
@@ -60,14 +60,15 @@ class Phase2RedNode:
                 print(f"> 판정 결과: {json.dumps(judgment_dict, indent=2, ensure_ascii=False)}")
 
                 judgment = judgment_dict.get("judgment")
+                reason = judgment_dict.get("reason")
                 
                 # 3. 방어 패턴 저장 (데이터셋 축적)
-                save_defense_pattern(category, pre_attack, blue_response, judgment)
+                save_defense_pattern(category, pre_attack, blue_response, judgment, reason)
 
                 if judgment == "FAIL":
                     # 방어선 붕괴 시 루프 종료
                     print(f"\n[!] RED WINS: 방어선이 돌파되었습니다.")
-                    save_generated_attack(category, pre_attack, blue_response, round_num)
+                    save_generated_attack(category, pre_attack, blue_response, round_num, judgment, reason)
                     break
                 else:
                     print(f"\n[*] BLUE WINS: 방어 성공. Red Agent가 변형을 시도합니다.")
