@@ -105,7 +105,7 @@ class RedAgent:
 
         if self.llm_client:
             # max_tokens를 대폭 늘려 긴 Payload가 잘리지 않도록 함
-            raw_response = self.llm_client.generate(full_prompt, role="red", max_tokens=2048)
+            raw_response = self.llm_client.generate(full_prompt, role="red", max_tokens=1024)
             
             try:
                 cleaned = raw_response.replace('```json', '').replace('```', '').strip()
