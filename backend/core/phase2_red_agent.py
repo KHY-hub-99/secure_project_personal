@@ -61,11 +61,11 @@ class Phase2RedNode:
                 save_defense_pattern(category, pre_attack, blue_response, judgment)
 
                 if judgment == "FAIL":
-                    print(f"[RED WINS] 방어선 붕괴 - ({reason})")
+                    print(f"\n[RED WINS] 방어선 붕괴 - ({reason})")
                     save_generated_attack(category, pre_attack, blue_response, round_num)
                     break
                 else:
-                    print(f"[BLUE WINS] 방어 성공 - ({reason})")
+                    print(f"\n[BLUE WINS] 방어 성공 - ({reason})")
                 print("> Red Agent: 방어 로직을 우회할 변형 공격 생성 중...")
                 mutated_attack = self.red.generate_attack(
                     category=category, 
@@ -74,7 +74,7 @@ class Phase2RedNode:
                     similar_successes=[], 
                     round_num=round_num
                 )
-                print(f"> Red Agent (변형 공격): {mutated_attack}")
+                print(f"\n> Red Agent (변형 공격): {mutated_attack}")
 
                 pre_attack = mutated_attack
     

@@ -28,17 +28,17 @@ class AgentShieldLLM:
         # 역할별 베이스 모델 (Ollama)
         self.ollama_base_models = {
             "base": os.getenv("OLLAMA_MODEL"),
-            "red": "dolphin-mistral", # Red는 검열 없는 돌고래 모델
+            "red": os.getenv("OLLAMA_MODEL"), # Red는 검열 없는 돌고래 모델
             "blue": os.getenv("OLLAMA_MODEL"),  
-            "judge": os.getenv("OLLAMA_MODEL")
+            "judge": "qwen2.5:0.5b"
         }
 
         # 역할별 베이스 모델 (Local PEFT)
         self.local_base_models = {
             "base": os.getenv("MODEL_PATH"),
-            "red": "dphn/dolphin-2.6-mistral-7b",
+            "red": os.getenv("MODEL_PATH"),
             "blue": os.getenv("MODEL_PATH"), 
-            "judge": os.getenv("OLLAMA_MODEL")
+            "judge": "Qwen/Qwen2.5-0.5B"
         }
 
         # 어댑터 경로
