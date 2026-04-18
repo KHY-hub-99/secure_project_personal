@@ -36,7 +36,7 @@ class Phase2RedNode:
 
         for idx, item in enumerate(attack_patterns):
             initial_attack = item.get("prompt_text")
-            sub_category = item.get("sub_category", "Initial-Entry")
+            sub_category = item.get("subcategory", "Initial-Entry")
             
             if not initial_attack:
                 continue
