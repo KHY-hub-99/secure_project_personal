@@ -25,11 +25,11 @@ def load_attack_patterns(category:str=None, filename:str=None):
         print(f"[Error] 파일 로드 실패: {str(e)}")
         return []
     
-def save_defense_pattern(category:str, attack_prompt:str, defense_output:str, judgment:str, reason:str):
+def save_defense_pattern(category:str, sub_category:str, attack_prompt:str, defense_output:str, judgment:str, reason:str):
     dir_path = os.path.join(root, "data", "defense_patterns")
     os.makedirs(dir_path, exist_ok=True)
 
-    file_path = os.path.join(dir_path, f"{category}_defense_success_data.json")
+    file_path = os.path.join(dir_path, f"{category}_defense_data.json")
 
     existing_data = []
     if os.path.exists(file_path):
@@ -38,9 +38,10 @@ def save_defense_pattern(category:str, attack_prompt:str, defense_output:str, ju
 
     new_entry = {
         "category": category,
+        "sub_category": sub_category,
         "judgment": judgment,
         "reason": reason,
-        "attack_input": attack_prompt,
+        "attack_prompt": attack_prompt,
         "blue_response": defense_output,
         "judgment": judgment,
         "timestamp": datetime.now().isoformat()
@@ -52,14 +53,14 @@ def save_defense_pattern(category:str, attack_prompt:str, defense_output:str, ju
 
     print(f"[Dataset] 고품질 방어 데이터가 {file_path}에 축적되었습니다.")
 
-def save_generated_attack(category:str, attack_prompt:str, blue_response:str, round_num:int, judgment:str, reason:str):
+def save_generated_attack(category:str, sub_category:str, attack_prompt:str, blue_response:str, round_num:int, judgment:str, reason:str):
     """
     Red Agent가 타겟을 뚫어내는 데 성공한 '치명적인 변형 공격(Zero-day Payload)'을 영구 저장합니다.
     """
     dir_path = os.path.join(root, "data", "attack_patterns")
     os.makedirs(dir_path, exist_ok=True)
 
-    file_path = os.path.join(dir_path, f"{category}_attack_success_data.json")
+    file_path = os.path.join(dir_path, f"{category}_attack_data.json")
 
     existing_data = []
     if os.path.exists(file_path):
@@ -68,10 +69,11 @@ def save_generated_attack(category:str, attack_prompt:str, blue_response:str, ro
 
     new_entry = {
         "category": category,
+        "sub_category": sub_category,
         "round_found": round_num,
         "judgment": judgment,
         "reason": reason,
-        "successful_payload": attack_prompt,
+        "attack_prompt": attack_prompt,
         "blue_response": blue_response,
         "timestamp": datetime.now().isoformat()
     }
