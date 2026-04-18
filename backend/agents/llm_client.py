@@ -72,7 +72,8 @@ class AgentShieldLLM:
             "num_predict": max_tokens,
             "temperature": 1.0,
             "top_p": 0.95,
-            "top_k": 64
+            "top_k": 64,
+            "num_ctx": 16384
         }
 
         if not self.use_local_peft:
@@ -99,7 +100,16 @@ class AgentShieldLLM:
                         response = client.post(url, json=payload)
                     
                     response.raise_for_status()
-                    result_text = response.json().get("message", {}).get("content", "")
+                    response_data = response.json()
+                    prompt_tokens = response_data.get("prompt_eval_count", 0)
+                    limit_ctx = options.get("num_ctx", 2048)
+                    
+                    print(f"(현재: {prompt_tokens} / 최대: {limit_ctx})")
+                    if prompt_tokens >= limit_ctx * 0.95:
+                        print(f"\n[OLLAMA 토큰 경고]")
+                        print(f"입력 프롬프트가 한계치에 도달했습니다! (현재: {prompt_tokens} / 최대: {limit_ctx})")
+                    
+                    result_text = response_data.get("message", {}).get("content", "")
                     
                     # 1. 텍스트 정제 (Thinking 태그가 섞여 나올 경우를 대비)
                     cleaned_text = self.parse_thinking_output(result_text)

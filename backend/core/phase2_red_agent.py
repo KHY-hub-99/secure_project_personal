@@ -79,6 +79,7 @@ class Phase2RedNode:
 
                 judgment = judgment_dict.get("judgment", "ERROR")
                 reason = judgment_dict.get("reason", "No reason provided.")
+                thought_process = judgment_dict.get("thought_process", "Thought process omitted.")
                 
                 # 4. 결과 판독 및 데이터 저장
                 if judgment == "FAIL":
