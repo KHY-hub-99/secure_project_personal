@@ -46,7 +46,7 @@ class AgentShieldLLM:
                 "local_model": "google/gemma-4-E2B",
                 "ollama_model": os.getenv("OLLAMA_MODEL"),
                 "temperature": 0.0,
-                "top_p": 0.95,
+                "top_p": 1,
                 "top_k": 1,
                 "num_ctx": 16384,
                 "adapter_path": os.path.join(root, "adapters", "lora-judge")
