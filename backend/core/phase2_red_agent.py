@@ -1,8 +1,5 @@
 """
-[R1] Phase 2 — Red Agent 변형 공격
-
-세부기획서 섹션 1(R1 역할), 기능별 파이프라인 섹션 2 참조.
-Phase 1에서 "safe" 결과를 가져와 AI가 우회 변형 생성. 최대 5라운드 Self-Play.
+[R1] Phase 2 — 초기 데이터 blue_agent 주입 -> 응답 판정 -> 변형 공격 생성 반복
 """
 import json
 import sys
@@ -70,7 +67,7 @@ class Phase2RedNode:
                 # 2. Blue Agent 턴 (방어 시뮬레이션)
                 print("\n" + "=" * 65)
                 print("> Blue Agent: 방어 응답 생성 중...")
-                blue_response = self.blue.simulate_response(category, current_attack)
+                blue_response = self.blue.generate_defense(category, current_attack)
                 print(f"[Blue Agent 응답]\n{blue_response}\n")
 
                 # 3. Judge Agent 턴 (보안 판정)

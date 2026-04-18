@@ -15,6 +15,9 @@ from pyprojroot import here
 root = str(here())
 load_dotenv()
 
+from pydantic import BaseModel
+from typing import Optional, Type, Any
+
 class AgentShieldLLM:
     def __init__(self, use_local_peft:bool=False, ollama_base_url:str=os.getenv("OLLAMA_BASE_URL")):
         self.use_local_peft = use_local_peft
@@ -46,7 +49,7 @@ class AgentShieldLLM:
             return
         if not self.use_local_peft:
             self.active_ollama_model = self.ollama_target_models.get(role, self.ollama_base_models.get(role, "base"))
-            print(f"[Ollama API] 역할 전환: {self.current_role} -> {role} (타겟 모델: {self.active_ollama_model})")
+            print(f"[Ollama API] 역할 전환: {self.current_role} -> {role} (타겟 모델: {self.active_ollama_model})\n")
         self.current_role = role
 
     def parse_thinking_output(self, response: str) -> str:
@@ -58,7 +61,7 @@ class AgentShieldLLM:
             return response.split("</think>")[-1].strip()
         return response.strip()
 
-    def chat(self, messages: list, role: str="base", max_tokens: int=1024) -> str:
+    def chat(self, messages: list, role: str="base", max_tokens: int=2048, response_model: Optional[Type[BaseModel]] = None) -> Any:
         """
         Gemma 4 권장 포맷(messages 배열)으로 Chat API를 호출합니다.
         """
@@ -80,39 +83,65 @@ class AgentShieldLLM:
                 "stream": False,
                 "options": options
             }
+            if response_model:
+                payload["format"] = response_model.model_json_schema()
+                
             try:
                 with httpx.Client(timeout=None) as client:
                     response = client.post(url, json=payload)
                     # 404 폴백 로직
                     if response.status_code == 404:
                         fallback_model = self.ollama_base_models.get(role, self.ollama_base_models["base"])
-                        print(f"\n[Ollama API] '{self.active_ollama_model}' 모델이 없습니다.")
-                        print(f"            해당 역할의 기본 모델({fallback_model})로 폴백하여 재시도합니다.")
+                        print(f"\n[Ollama API] '{self.active_ollama_model}' 모델 X -> 해당 역할의 기본 모델({fallback_model})로 폴백\n")
                         
-                        # 타겟 모델을 베이스 모델로 교체 후 재요청
                         self.active_ollama_model = fallback_model
                         payload["model"] = fallback_model
                         response = client.post(url, json=payload)
                     
                     response.raise_for_status()
                     result_text = response.json().get("message", {}).get("content", "")
-                    return self.parse_thinking_output(result_text)
+                    
+                    # 1. 텍스트 정제 (Thinking 태그가 섞여 나올 경우를 대비)
+                    cleaned_text = self.parse_thinking_output(result_text)
+                    
+                    # 2. Pydantic 객체로 파싱
+                    if response_model:
+                        try:
+                            # 성공하면 Pydantic 인스턴스를 반환
+                            return response_model.model_validate_json(cleaned_text)
+                        except Exception as e:
+                            print(f"[LLM Client] Pydantic 파싱 에러: {e}\n원본 텍스트: {cleaned_text}")
+                            return None
+                            
+                    return cleaned_text
             except Exception as e:
-                return f"[Error] LLM 호출 실패: {str(e)}"
+                print(f"[Error] LLM 호출 실패: {str(e)}")
+                return None
         else:
-            # Local PEFT를 위한 apply_chat_template 처리
+            # Local PEFT 로직 (Ollama API가 아닌 로컬 모델 구동 시)
             try:
                 text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
                 inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
                 outputs = self.model.generate(**inputs, max_new_tokens=max_tokens, temperature=1.0, do_sample=True)
                 input_len = inputs["input_ids"].shape[-1]
                 result_text = self.tokenizer.decode(outputs[0][input_len:], skip_special_tokens=True)
-                return self.parse_thinking_output(result_text)
+                cleaned_text = self.parse_thinking_output(result_text)
+                
+                if response_model:
+                    try:
+                        return response_model.model_validate_json(cleaned_text)
+                    except Exception as e:
+                        print(f"[Local PEFT] Pydantic 파싱 에러: {e}")
+                        return None
+                        
+                return cleaned_text
+                
             except Exception as e:
-                return f"[Error] Local PEFT 추론 실패: {str(e)}"
+                print(f"[Error] Local PEFT 추론 실패: {str(e)}")
+                return None
 
     # [중요] 기존 코드와의 호환성을 위해 generate 메서드도 유지하거나 chat을 호출하도록 수정
-    def generate(self, prompt:str, role:str="base", max_tokens:int=1024) -> str:
+    def generate(self, prompt:str, role:str="base", max_tokens:int=2048) -> str:
         messages = [{"role": "user", "content": prompt}]
         return self.chat(messages, role=role, max_tokens=max_tokens)
             
