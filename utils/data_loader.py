@@ -51,8 +51,6 @@ def save_defense_pattern(category:str, sub_category:str, attack_prompt:str, defe
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(existing_data, f, ensure_ascii=False, indent=2)
 
-    print(f"[Dataset] 고품질 방어 데이터가 {file_path}에 축적되었습니다.")
-
 def save_generated_attack(category:str, sub_category:str, attack_prompt:str, blue_response:str, round_num:int, judgment:str, reason:str):
     """
     Red Agent가 타겟을 뚫어내는 데 성공한 '치명적인 변형 공격(Zero-day Payload)'을 영구 저장합니다.
@@ -81,5 +79,3 @@ def save_generated_attack(category:str, sub_category:str, attack_prompt:str, blu
 
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(existing_data, f, ensure_ascii=False, indent=2)
-
-    print(f"[Red Dataset] 타겟을 뚫어낸 치명적 공격 패턴이 {file_path}에 기록되었습니다.")

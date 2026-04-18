@@ -25,7 +25,7 @@ class Phase2RedNode:
         self.max_mutation_rounds = 5
 
     def run(self, category: str):
-        attack_patterns = load_attack_patterns(category, "colla_v3.json")
+        attack_patterns = load_attack_patterns(category, "colla_v2.json")
         if not attack_patterns:
             print(f"[{category}] 공격 패턴이 없습니다. 데이터를 확인하세요.")
             return
@@ -37,67 +37,72 @@ class Phase2RedNode:
         for idx, item in enumerate(attack_patterns):
             initial_attack = item.get("prompt_text")
             sub_category = item.get("sub_category", "Initial-Entry")
+            
             if not initial_attack:
                 continue
-
+            
             print(f"\n[Scenario {idx+1}/{len(attack_patterns)}] 시작")
-            print(f"   > 초기 공격: {initial_attack}\n")
-
-            pre_attack = initial_attack
+            
+            previous_attack = initial_attack
+            previous_blue_response = ""
 
             for round_num in range(1, self.max_mutation_rounds + 1):
-                print(f"\n[Round {round_num}]")
-                
-                # 1. Blue Agent 방어 시뮬레이션
                 print("\n" + "=" * 65)
-                print("\n> Blue Agent: 방어 응답 생성 중...")
-                blue_response = self.blue.simulate_response(category, pre_attack)
-                print(f"[Blue Agent 응답]\n{blue_response}\n")
-
-                # 2. Judge Agent 판정 (Gemma 4 기반 JSON 판정)
-                print("\n" + "=" * 65)
-                print("\n> Judge Agent: 보안 판정 중...")
-                judgment_dict = self.judge.evaluate_response(category, pre_attack, blue_response)
                 
-                # [요청사항] 판정 결과를 JSON 형식으로 출력
-                print(f"> [판정 결과]\n{json.dumps(judgment_dict, indent=2, ensure_ascii=False)}")
-
-                judgment = judgment_dict.get("judgment")
-                reason = judgment_dict.get("reason")
-                
-                # 3. 방어 패턴 저장 (데이터셋 축적)
-                save_defense_pattern(category, sub_category, pre_attack, blue_response, judgment, reason)
-
-                if judgment == "FAIL":
-                    # 방어선 붕괴 시 루프 종료
-                    print("\n" + "=" * 65)
-                    print(f"\n[!] RED WINS: 방어선이 돌파되었습니다.")
-                    save_generated_attack(category, sub_category, pre_attack, blue_response, round_num, judgment, reason)
-                    break
+                # 1. Red Agent 턴 (공격 세팅 또는 변형 생성)
+                if round_num == 1:
+                    print(f"\n[Round 1] 시작")
+                    print("> Red Agent: 초기 공격 사용")
+                    current_attack = initial_attack
                 else:
-                    print("\n" + "=" * 65)
-                    print(f"\n[*] BLUE WINS: 방어 성공. Red Agent가 변형을 시도합니다.")
-                    save_generated_attack(category, sub_category, pre_attack, blue_response, round_num, judgment, reason)
-
-                # 4. Red Agent 변형 공격 생성 (Thinking Mode 활용)
-                print("\n" + "=" * 65)
-                print("\n> Red Agent: 변형 공격 생성 중...")
-                if round_num == 5:
-                    break
-                else:
-                    mutated_attack = self.red.generate_attack(
+                    print(f"\n[Round {round_num}] 시작")
+                    print("\n> Red Agent: 이전 방어 논리를 분석하여 변형 공격 생성 중...")
+                    current_attack = self.red.generate_attack(
                         category=category, 
                         sub_category=sub_category,
-                        pre_attack=pre_attack, 
-                        target_res=blue_response, 
+                        pre_attack=previous_attack, 
+                        target_res=previous_blue_response, 
                         similar_successes=[], 
                         round_num=round_num
                     )
-                print(f"[Red Agent (변형 공격)]\n{mutated_attack}")
+                print(f"[Red Agent 공격 페이로드]\n{current_attack}")
+
+                # 2. Blue Agent 턴 (방어 시뮬레이션)
+                print("\n" + "=" * 65)
+                print("> Blue Agent: 방어 응답 생성 중...")
+                blue_response = self.blue.simulate_response(category, current_attack)
+                print(f"[Blue Agent 응답]\n{blue_response}\n")
+
+                # 3. Judge Agent 턴 (보안 판정)
+                print("\n" + "=" * 65)
+                print("> Judge Agent: 보안 판정 중...")
+                judgment_dict = self.judge.evaluate_response(category, current_attack, blue_response)
                 
-                pre_attack = mutated_attack
+                print(f"[판정 결과]\n{json.dumps(judgment_dict, indent=2, ensure_ascii=False)}\n")
+
+                judgment = judgment_dict.get("judgment", "ERROR")
+                reason = judgment_dict.get("reason", "No reason provided.")
+                
+                save_generated_attack(category, sub_category, current_attack, blue_response, round_num, judgment, reason)
+                save_defense_pattern(category, sub_category, current_attack, blue_response, judgment, reason)
+                
+                # 4. 결과 판독 및 데이터 저장
+                if judgment == "FAIL":
+                    print("\n" + "=" * 65)
+                    print(f"[!] RED WINS: 방어선이 돌파되었습니다. (시나리오 종료)")
+                    break # 뚫렸으므로 다음 시나리오로 넘어감
+                else:
+                    print("\n" + "=" * 65)
+                    if round_num < self.max_mutation_rounds:
+                        print(f"[*] BLUE WINS: 방어 성공. Red Agent가 다음 라운드에서 변형을 시도합니다.")
+                    else:
+                        print(f"[*] BLUE WINS: 최종 방어 성공. 최대 라운드({self.max_mutation_rounds})를 버텨냈습니다.")
+                
+                # 다음 라운드 준비
+                previous_attack = current_attack
+                previous_blue_response = blue_response
     
 if __name__ == "__main__":
     llm = AgentShieldLLM(use_local_peft=False)
     pipeline = Phase2RedNode(llm)
-    pipeline.run("LLM07")
+    pipeline.run("LLM01")
