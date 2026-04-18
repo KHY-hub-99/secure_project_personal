@@ -25,7 +25,7 @@ def load_attack_patterns(category:str=None, filename:str=None):
         print(f"[Error] 파일 로드 실패: {str(e)}")
         return []
     
-def save_defense_pattern(category:str, sub_category:str, attack_prompt:str, defense_output:str, judgment:str, reason:str, thought_process, out_path:str):
+def save_defense_pattern(category:str, sub_category:str, attack_prompt:str, defense_output:str, judgment:str, reason:str, thought_process, evidence, out_path:str):
     dir_path = os.path.join(root, "data", "defense_patterns")
     os.makedirs(dir_path, exist_ok=True)
 
@@ -42,6 +42,7 @@ def save_defense_pattern(category:str, sub_category:str, attack_prompt:str, defe
         "judgment": judgment,
         "reason": reason,
         "thought_process": thought_process,
+        "evidence": evidence,
         "attack_prompt": attack_prompt,
         "blue_response": defense_output,
         "judgment": judgment,
@@ -52,7 +53,7 @@ def save_defense_pattern(category:str, sub_category:str, attack_prompt:str, defe
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(existing_data, f, ensure_ascii=False, indent=2)
 
-def save_generated_attack(category:str, sub_category:str, attack_prompt:str, blue_response:str, round_num:int, judgment:str, reason:str, thought_process, out_path:str):
+def save_generated_attack(category:str, sub_category:str, attack_prompt:str, blue_response:str, round_num:int, judgment:str, reason:str, thought_process, evidence, out_path:str):
     """
     Red Agent가 타겟을 뚫어내는 데 성공한 '치명적인 변형 공격(Zero-day Payload)'을 영구 저장합니다.
     """
@@ -73,6 +74,7 @@ def save_generated_attack(category:str, sub_category:str, attack_prompt:str, blu
         "judgment": judgment,
         "reason": reason,
         "thought_process": thought_process,
+        "evidence": evidence,
         "attack_prompt": attack_prompt,
         "blue_response": blue_response,
         "timestamp": datetime.now().isoformat()
