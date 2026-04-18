@@ -85,19 +85,19 @@ class Phase2RedNode:
                 if judgment == "FAIL":
                     print("\n" + "=" * 65)
                     print(f"[!] RED WINS: 방어선이 돌파되었습니다. (시나리오 종료)")
-                    save_generated_attack(category, sub_category, current_attack, blue_response, round_num, judgment, reason, out_path=f"{category}_attack_PASS_data.json")
-                    save_defense_pattern(category, sub_category, current_attack, blue_response, judgment, reason, out_path=f"{category}_deffense_FAIL_data.json")
+                    save_generated_attack(category, sub_category, current_attack, blue_response, round_num, judgment, reason, thought_process, out_path=f"{category}_attack_PASS_data.json")
+                    save_defense_pattern(category, sub_category, current_attack, blue_response, judgment, reason, thought_process, out_path=f"{category}_deffense_FAIL_data.json")
                     break # 뚫렸으므로 다음 시나리오로 넘어감
                 else:
                     print("\n" + "=" * 65)
                     if round_num < self.max_mutation_rounds:
                         print(f"[*] BLUE WINS: 방어 성공. Red Agent가 다음 라운드에서 변형을 시도합니다.")
-                        save_generated_attack(category, sub_category, current_attack, blue_response, round_num, judgment, reason, out_path=f"{category}_attack_FAIL_data.json")
-                        save_defense_pattern(category, sub_category, current_attack, blue_response, judgment, reason, out_path=f"{category}_deffense_PASS_data.json")
+                        save_generated_attack(category, sub_category, current_attack, blue_response, round_num, judgment, reason, thought_process, out_path=f"{category}_attack_FAIL_data.json")
+                        save_defense_pattern(category, sub_category, current_attack, blue_response, judgment, reason, thought_process, out_path=f"{category}_deffense_PASS_data.json")
                     else:
                         print(f"[*] BLUE WINS: 최종 방어 성공. 최대 라운드({self.max_mutation_rounds})를 버텨냈습니다.")
-                        save_generated_attack(category, sub_category, current_attack, blue_response, round_num, judgment, reason, out_path=f"{category}_attack_FAIL_data.json")
-                        save_defense_pattern(category, sub_category, current_attack, blue_response, judgment, reason, out_path=f"{category}_deffense_PASS_data.json")
+                        save_generated_attack(category, sub_category, current_attack, blue_response, round_num, judgment, reason, thought_process, out_path=f"{category}_attack_FAIL_data.json")
+                        save_defense_pattern(category, sub_category, current_attack, blue_response, judgment, reason, thought_process, out_path=f"{category}_deffense_PASS_data.json")
                 
                 # 다음 라운드 준비
                 previous_attack = current_attack

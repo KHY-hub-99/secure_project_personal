@@ -11,69 +11,145 @@ from dotenv import load_dotenv
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from pyprojroot import here
+from pydantic import BaseModel
+from typing import Optional, Type, Any, Dict
 
 root = str(here())
 load_dotenv()
-
-from pydantic import BaseModel
-from typing import Optional, Type, Any
 
 class AgentShieldLLM:
     def __init__(self, use_local_peft:bool=False, ollama_base_url:str=os.getenv("OLLAMA_BASE_URL")):
         self.use_local_peft = use_local_peft
         self.current_role = None
         self.ollama_base_url = ollama_base_url
-
-        self.ollama_base_models = {
-            "base": os.getenv("OLLAMA_MODEL", "gemma4:e2b"),
-            "red": os.getenv("OLLAMA_MODEL", "gemma4:e2b"),
-            "blue": os.getenv("OLLAMA_MODEL", "gemma4:e2b"),  
-            "judge": os.getenv("OLLAMA_MODEL", "gemma4:e2b")
+        
+        self.role_configs: Dict[str, Dict[str, Any]] = {
+            "red": {
+                "local_model": "google/gemma-4-E2B",
+                "ollama_model": os.getenv("OLLAMA_MODEL"),
+                "temperature": 1.0,
+                "top_p": 0.95,
+                "top_k": 64,
+                "num_ctx": 8192,
+                "adapter_path": os.path.join(root, "adapters", "lora-red")
+            },
+            "blue": {
+                "local_model": "google/gemma-4-E2B",
+                "ollama_model": os.getenv("OLLAMA_MODEL"),
+                "temperature": 1.0,
+                "top_p": 0.95,
+                "top_k": 64,
+                "num_ctx": 8192,
+                "adapter_path": os.path.join(root, "adapters", "lora-blue")
+            },
+            "judge": {
+                "local_model": "google/gemma-4-E2B",
+                "ollama_model": os.getenv("OLLAMA_MODEL"),
+                "temperature": 0.0,
+                "top_p": 0.95,
+                "top_k": 1,
+                "num_ctx": 16384,
+                "adapter_path": os.path.join(root, "adapters", "lora-judge")
+            },
+            "base": {
+                "local_model": "google/gemma-4-E2B",
+                "ollama_model": os.getenv("OLLAMA_MODEL"),
+                "temperature": 1.0,
+                "top_p": 0.95,
+                "top_k": 64,
+                "num_ctx": 8192,
+                "adapter_path": None
+            }
         }
+
+        # Ollama 전용 타겟 모델 매핑 (Ollama에 미리 생성해둔 어댑터 모델이 있을 경우)
         self.ollama_target_models = {
-            "base": self.ollama_base_models["base"],
             "red": "agentshield-red",
             "judge": "agentshield-judge",
-            "blue": "agentshield-blue"
+            "blue": "agentshield-blue",
+            "base": self.role_configs["base"]["ollama_model"]
         }
         
         if not self.use_local_peft:
-            self.active_ollama_model = self.ollama_base_models["base"]
+            self.active_ollama_model = self.role_configs["base"]["ollama_model"]
         else:
-            self.tokenizer = None
-            self.model = None
-            self.base_model = None
+            # [Local PEFT 모드] 초기 모델 로드 (기본적으로 base 모델로 시작)
+            self.current_base_model_id = self.role_configs["base"]["local_model"]
+            print(f"[Local PEFT] 초기 베이스 모델 로드 중: {self.current_base_model_id}")
+            
+            self.tokenizer = AutoTokenizer.from_pretrained(self.current_base_model_id)
+            self.base_model = AutoModelForCausalLM.from_pretrained(
+                self.current_base_model_id, 
+                torch_dtype=torch.float16, 
+                device_map="auto"
+            )
+            # 최초 실행 시 모델을 PeftModel 구조로 감싸둠 (어댑터 없이 시작)
+            self.model = PeftModel.from_pretrained(
+                self.base_model, 
+                self.role_configs["red"]["adapter_path"], 
+                adapter_name="red"
+            )
+            self.current_role = "red"
 
     def switch_role(self, role: str):
+        """역할에 따라 모델(Ollama) 또는 베이스 모델/어댑터(Local)를 전환합니다."""
         if role == self.current_role:
             return
+        
+        config = self.role_configs.get(role, self.role_configs["base"])
+        
         if not self.use_local_peft:
-            self.active_ollama_model = self.ollama_target_models.get(role, self.ollama_base_models.get(role, "base"))
-            print(f"[Ollama API] 역할 전환: {self.current_role} -> {role} (타겟 모델: {self.active_ollama_model})\n")
+            self.active_ollama_model = self.ollama_target_models.get(role, config["ollama_model"])
+            print(f"[Ollama API] 역할 전환: {self.current_role} -> {role} (모델: {self.active_ollama_model})\n")
+        else:
+            target_base_model = config["local_model"]
+            
+            if hasattr(self, 'current_base_model_id') and self.current_base_model_id != target_base_model:
+                print(f"[Local PEFT] 베이스 모델 전면 교체: {target_base_model}\n")
+                del self.model
+                del self.base_model
+                torch.cuda.empty_cache() # VRAM 비우기
+                
+                self.base_model = AutoModelForCausalLM.from_pretrained(
+                    target_base_model, torch_dtype=torch.float16, device_map="auto"
+                )
+                self.tokenizer = AutoTokenizer.from_pretrained(target_base_model)
+                self.model = PeftModel.from_pretrained(
+                    self.base_model, config["adapter_path"], adapter_name=role
+                )
+                self.current_base_model_id = target_base_model
+            else:
+                print(f"[Local PEFT] 어댑터 전환: {role}\n")
+                if config["adapter_path"]:
+                    if role not in self.model.peft_config:
+                        self.model.load_adapter(config["adapter_path"], adapter_name=role)
+                    self.model.set_adapter(role)
+                    
+            print(f"[Local PEFT] '{role}' 역할 활성화 완료.\n")
+
         self.current_role = role
 
     def parse_thinking_output(self, response: str) -> str:
         """Gemma 4의 Thinking Mode 출력물에서 최종 답변만 추출합니다."""
-        # 공식 포맷: <|channel|>thought\n[Internal reasoning]<channel|>[Final answer]
         if "<channel|>" in response:
             return response.split("<channel|>")[-1].strip()
         elif "</think>" in response:
             return response.split("</think>")[-1].strip()
+        # 태그가 아예 없는 경우 원본을 반환
         return response.strip()
 
     def chat(self, messages: list, role: str="base", max_tokens: int=2048, response_model: Optional[Type[BaseModel]] = None) -> Any:
-        """
-        Gemma 4 권장 포맷(messages 배열)으로 Chat API를 호출합니다.
-        """
         self.switch_role(role)
         
-        # Gemma 4 공식 가이드라인 권장 파라미터 적용
+        role_config = self.role_configs.get(role, self.role_configs["base"])
+        
+        # 역할별 최적 파라미터 로드
         options = {
             "num_predict": max_tokens,
-            "temperature": 1.0,
-            "top_p": 0.95,
-            "top_k": 64,
-            "num_ctx": 16384
+            "temperature": role_config["temperature"],
+            "top_p": role_config.get("top_p", 0.95),
+            "top_k": role_config.get("top_k", 64),
+            "num_ctx": role_config["num_ctx"]
         }
 
         if not self.use_local_peft:
@@ -90,49 +166,46 @@ class AgentShieldLLM:
             try:
                 with httpx.Client(timeout=None) as client:
                     response = client.post(url, json=payload)
-                    # 404 폴백 로직
                     if response.status_code == 404:
-                        fallback_model = self.ollama_base_models.get(role, self.ollama_base_models["base"])
-                        print(f"\n[Ollama API] '{self.active_ollama_model}' 모델 X -> 해당 역할의 기본 모델({fallback_model})로 폴백\n")
-                        
-                        self.active_ollama_model = fallback_model
+                        fallback_model = role_config["ollama_model"]
+                        print(f"[Fallback] {self.active_ollama_model} 없음 -> {fallback_model} 사용")
                         payload["model"] = fallback_model
                         response = client.post(url, json=payload)
                     
                     response.raise_for_status()
-                    response_data = response.json()
-                    prompt_tokens = response_data.get("prompt_eval_count", 0)
-                    limit_ctx = options.get("num_ctx", 2048)
+                    data = response.json()
                     
-                    print(f"(현재: {prompt_tokens} / 최대: {limit_ctx})")
-                    if prompt_tokens >= limit_ctx * 0.95:
-                        print(f"\n[OLLAMA 토큰 경고]")
-                        print(f"입력 프롬프트가 한계치에 도달했습니다! (현재: {prompt_tokens} / 최대: {limit_ctx})")
+                    # 토큰 모니터링 출력
+                    p_tokens = data.get("prompt_eval_count", 0)
+                    print(f"[{role.upper()}] Tokens: {p_tokens} / {options['num_ctx']}")
                     
-                    result_text = response_data.get("message", {}).get("content", "")
-                    
-                    # 1. 텍스트 정제 (Thinking 태그가 섞여 나올 경우를 대비)
+                    result_text = data.get("message", {}).get("content", "")
                     cleaned_text = self.parse_thinking_output(result_text)
                     
-                    # 2. Pydantic 객체로 파싱
                     if response_model:
                         try:
-                            # 성공하면 Pydantic 인스턴스를 반환
                             return response_model.model_validate_json(cleaned_text)
                         except Exception as e:
-                            print(f"[LLM Client] Pydantic 파싱 에러: {e}\n원본 텍스트: {cleaned_text}")
+                            print(f"[{role}] Pydantic 에러: {e}\n원본: {cleaned_text}")
                             return None
-                            
                     return cleaned_text
             except Exception as e:
-                print(f"[Error] LLM 호출 실패: {str(e)}")
+                print(f"[Ollama Error] {e}")
                 return None
+        # [Local PEFT 실행 로직]
         else:
-            # Local PEFT 로직 (Ollama API가 아닌 로컬 모델 구동 시)
             try:
                 text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
                 inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
-                outputs = self.model.generate(**inputs, max_new_tokens=max_tokens, temperature=1.0, do_sample=True)
+                
+                outputs = self.model.generate(
+                    **inputs, 
+                    max_new_tokens=max_tokens, 
+                    temperature=options["temperature"],
+                    do_sample=True if options["temperature"] > 0 else False,
+                    top_p=options["top_p"]
+                )
+                
                 input_len = inputs["input_ids"].shape[-1]
                 result_text = self.tokenizer.decode(outputs[0][input_len:], skip_special_tokens=True)
                 cleaned_text = self.parse_thinking_output(result_text)
@@ -141,17 +214,15 @@ class AgentShieldLLM:
                     try:
                         return response_model.model_validate_json(cleaned_text)
                     except Exception as e:
-                        print(f"[Local PEFT] Pydantic 파싱 에러: {e}")
+                        print(f"[Local PEFT] Pydantic 에러: {e}")
                         return None
-                        
                 return cleaned_text
-                
             except Exception as e:
-                print(f"[Error] Local PEFT 추론 실패: {str(e)}")
+                print(f"[Local PEFT Error] {e}")
                 return None
 
-    # [중요] 기존 코드와의 호환성을 위해 generate 메서드도 유지하거나 chat을 호출하도록 수정
-    def generate(self, prompt:str, role:str="base", max_tokens:int=2048) -> str:
+    # 기존 코드와의 호환성을 위해 generate 메서드도 유지하거나 chat을 호출하도록 수정
+    def generate(self, prompt: str, role: str = "base", max_tokens: int = 2048) -> str:
         messages = [{"role": "user", "content": prompt}]
         return self.chat(messages, role=role, max_tokens=max_tokens)
             
