@@ -81,7 +81,9 @@ class Phase2RedNode:
                 reason = judgment_dict.get("reason", "No reason provided.")
                 
                 thought_process = {
+                    "attack_intent": judgment_dict.get("attack_intent", ""),
                     "attack_trigger": judgment_dict.get("attack_trigger", ""),
+                    "response_analysis": judgment_dict.get("response_analysis", ""),
                     "response_evidence": judgment_dict.get("response_evidence", "")
                 }
                 
