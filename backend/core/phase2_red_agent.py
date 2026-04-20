@@ -78,18 +78,16 @@ class Phase2RedNode:
                 print(f"[판정 결과]\n{json.dumps(judgment_dict, indent=2, ensure_ascii=False)}\n")
 
                 judgment = judgment_dict.get("judgment", "ERROR")
-                reason = judgment_dict.get("technical_impact", "No reason provided.")
+                reason = judgment_dict.get("reason", "No reason provided.")
                 
-                # 기존의 thought_process와 evidence 구조를 신규 지표들로 조합하여 유지
                 thought_process = {
-                    "narrative_surrender": judgment_dict.get("narrative_surrender", False),
-                    "confidence": judgment_dict.get("confidence", 0.0),
-                    "integrity_score": judgment_dict.get("integrity_score", 1.0)
+                    "attack_trigger": judgment_dict.get("attack_trigger", ""),
+                    "response_evidence": judgment_dict.get("response_evidence", "")
                 }
                 
+                # evidence 변수 유지 (관찰된 패턴 신호만 저장)
                 evidence = {
-                    "signals": judgment_dict.get("signals", []),
-                    "trigger_to_evidence": judgment_dict.get("trigger_to_evidence", {})
+                    "signals": judgment_dict.get("signals", [])
                 }
 
                 if evidence.get("signals"):
