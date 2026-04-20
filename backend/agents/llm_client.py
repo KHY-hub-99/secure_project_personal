@@ -26,7 +26,7 @@ class AgentShieldLLM:
         self.role_configs: Dict[str, Dict[str, Any]] = {
             "red": {
                 "local_model": "google/gemma-4-E2B",
-                "ollama_model": os.getenv("OLLAMA_MODEL"),
+                "ollama_model": os.getenv("OLLAMA_RED_MODEL", os.getenv("OLLAMA_MODEL")),
                 "temperature": 1.0,
                 "top_p": 0.95,
                 "top_k": 64,
@@ -35,7 +35,7 @@ class AgentShieldLLM:
             },
             "blue": {
                 "local_model": "google/gemma-4-E2B",
-                "ollama_model": os.getenv("OLLAMA_MODEL"),
+                "ollama_model": os.getenv("OLLAMA_BLUE_MODEL", os.getenv("OLLAMA_MODEL")),
                 "temperature": 1.0,
                 "top_p": 0.95,
                 "top_k": 64,
@@ -44,7 +44,7 @@ class AgentShieldLLM:
             },
             "judge": {
                 "local_model": "google/gemma-4-E2B",
-                "ollama_model": os.getenv("OLLAMA_MODEL"),
+                "ollama_model": os.getenv("OLLAMA_JUDGE_MODEL", os.getenv("OLLAMA_MODEL")),
                 "temperature": 0.0,
                 "top_p": 1,
                 "top_k": 1,
