@@ -18,124 +18,133 @@ root = str(here())
 load_dotenv()
 
 class AgentShieldLLM:
-    def __init__(self, use_local_peft:bool=False, ollama_base_url:str=os.getenv("OLLAMA_BASE_URL")):
+    """LLM 클라이언트 — 역할별 어댑터 전환"""
+
+    def __init__(
+        self,
+        use_local_peft: bool = False,
+        ollama_base_url: str = os.getenv("OLLAMA_BASE_URL")
+    ):
         self.use_local_peft = use_local_peft
         self.current_role = None
         self.ollama_base_url = ollama_base_url
-        
+
+        self.ollama_base_models = {
+            "base": os.getenv("OLLAMA_MODEL"),
+            "red": os.getenv("OLLAMA_RED_MODEL"),
+            "blue": os.getenv("OLLAMA_BLUE_MODEL"),
+            "judge": os.getenv("OLLAMA_JUDGE_MODEL"),
+        }
+
+        self.local_base_models = {
+            "base": os.getenv("LOCAL_BASE_MODEL"),
+            "red": os.getenv("LOCAL_RED_MODEL"),
+            "blue": os.getenv("LOCAL_BLUE_MODEL"),
+            "judge": os.getenv("LOCAL_JUDGE_MODEL"),
+        }
+
         self.role_configs: Dict[str, Dict[str, Any]] = {
+            "base": {
+                "local_model": self.local_base_models["base"],
+                "ollama_model": self.ollama_base_models["base"],
+                "temperature": 0.1,
+                "top_p": 0.95,
+                "top_k": 64,
+                "num_ctx": 8192,
+                "adapter_path": None,
+            },
             "red": {
-                "local_model": "google/gemma-4-E2B",
-                "ollama_model": os.getenv("OLLAMA_RED_MODEL", os.getenv("OLLAMA_MODEL")),
+                "local_model": self.local_base_models["red"],
+                "ollama_model": self.ollama_base_models["red"],
                 "temperature": 1.0,
                 "top_p": 0.95,
                 "top_k": 64,
                 "num_ctx": 8192,
-                "adapter_path": os.path.join(root, "adapters", "lora-red")
+                "adapter_path": os.path.join(root, "adapters", "lora-red"),
             },
             "blue": {
-                "local_model": "google/gemma-4-E2B",
-                "ollama_model": os.getenv("OLLAMA_BLUE_MODEL", os.getenv("OLLAMA_MODEL")),
-                "temperature": 1.0,
+                "local_model": self.local_base_models["blue"],
+                "ollama_model": self.ollama_base_models["blue"],
+                "temperature": 0.1,
                 "top_p": 0.95,
                 "top_k": 64,
                 "num_ctx": 8192,
-                "adapter_path": os.path.join(root, "adapters", "lora-blue")
+                "adapter_path": os.path.join(root, "adapters", "lora-blue"),
             },
             "judge": {
-                "local_model": "google/gemma-4-E2B",
-                "ollama_model": os.getenv("OLLAMA_JUDGE_MODEL", os.getenv("OLLAMA_MODEL")),
+                "local_model": self.local_base_models["judge"],
+                "ollama_model": self.ollama_base_models["judge"],
                 "temperature": 0.0,
                 "top_p": 1,
                 "top_k": 1,
                 "num_ctx": 16384,
-                "adapter_path": os.path.join(root, "adapters", "lora-judge")
+                "adapter_path": os.path.join(root, "adapters", "lora-judge"),
             },
-            "base": {
-                "local_model": "google/gemma-4-E2B",
-                "ollama_model": os.getenv("OLLAMA_MODEL"),
-                "temperature": 1.0,
-                "top_p": 0.95,
-                "top_k": 64,
-                "num_ctx": 8192,
-                "adapter_path": None
-            }
         }
 
-        # Ollama 전용 타겟 모델 매핑 (Ollama에 미리 생성해둔 어댑터 모델이 있을 경우)
         self.ollama_target_models = {
-            "red": "agentshield-red",
-            "judge": "agentshield-judge",
-            "blue": "agentshield-blue",
-            "base": self.role_configs["base"]["ollama_model"]
+            "red": os.getenv("OLLAMA_RED_TARGET_MODEL", "agentshield-red"),
+            "judge": os.getenv("OLLAMA_JUDGE_TARGET_MODEL", "agentshield-judge"),
+            "blue": os.getenv("OLLAMA_BLUE_TARGET_MODEL", "agentshield-blue"),
+            "base": os.getenv("OLLAMA_BASE_TARGET_MODEL", self.role_configs["base"]["ollama_model"]),
         }
-        
+
         if not self.use_local_peft:
-            self.active_ollama_model = self.role_configs["base"]["ollama_model"]
+            print("[LLM Client] Ollama API 모드(시뮬레이션 전용) 초기화")
+            self.active_ollama_model = self.ollama_target_models["base"]
         else:
-            # [Local PEFT 모드] 초기 모델 로드 (기본적으로 base 모델로 시작)
-            self.current_base_model_id = self.role_configs["base"]["local_model"]
-            print(f"[Local PEFT] 초기 베이스 모델 로드 중: {self.current_base_model_id}")
-            
-            self.tokenizer = AutoTokenizer.from_pretrained(self.current_base_model_id)
-            self.base_model = AutoModelForCausalLM.from_pretrained(
-                self.current_base_model_id, 
-                torch_dtype=torch.float16, 
-                device_map="auto"
-            )
-            # 최초 실행 시 모델을 PeftModel 구조로 감싸둠 (어댑터 없이 시작)
-            self.model = PeftModel.from_pretrained(
-                self.base_model, 
-                self.role_configs["red"]["adapter_path"], 
-                adapter_name="red"
-            )
-            self.current_role = "red"
+            print("[LLM Client] Local PEFT 모드(학습 전용) 초기화")
+            self.base_model = None
+            self.model = None
+            self.tokenizer = None
+            self.current_local_base_path = None
 
     def switch_role(self, role: str):
-        """역할에 따라 모델(Ollama) 또는 베이스 모델/어댑터(Local)를 전환합니다."""
         if role == self.current_role:
             return
-        
-        config = self.role_configs.get(role, self.role_configs["base"])
-        
+
+        role_config = self.role_configs.get(role, self.role_configs["base"])
+
         if not self.use_local_peft:
-            self.active_ollama_model = self.ollama_target_models.get(role, config["ollama_model"])
-            print(f"[Ollama API] 역할 전환: {self.current_role} -> {role} (모델: {self.active_ollama_model})\n")
+            self.active_ollama_model = self.ollama_target_models.get(role, role_config["ollama_model"])
+            print(f"[Ollama API] 역할 전환: {self.current_role} -> {role} (타겟 모델: {self.active_ollama_model})")
         else:
-            target_base_model = config["local_model"]
-            
-            if hasattr(self, 'current_base_model_id') and self.current_base_model_id != target_base_model:
-                print(f"[Local PEFT] 베이스 모델 전면 교체: {target_base_model}\n")
-                del self.model
-                del self.base_model
-                torch.cuda.empty_cache() # VRAM 비우기
-                
+            target_base_path = role_config["local_model"]
+
+            if self.current_local_base_path != target_base_path:
+                print(f"[Local PEFT] 베이스 모델 변경 감지. 기존 메모리 정리 및 [{target_base_path}] 로드 중...")
+
+                if self.base_model is not None:
+                    del self.model
+                    del self.base_model
+                    del self.tokenizer
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+
+                self.tokenizer = AutoTokenizer.from_pretrained(target_base_path)
                 self.base_model = AutoModelForCausalLM.from_pretrained(
-                    target_base_model, torch_dtype=torch.float16, device_map="auto"
+                    target_base_path,
+                    device_map="auto",
+                    torch_dtype=torch.float16,
                 )
-                self.tokenizer = AutoTokenizer.from_pretrained(target_base_model)
-                self.model = PeftModel.from_pretrained(
-                    self.base_model, config["adapter_path"], adapter_name=role
-                )
-                self.current_base_model_id = target_base_model
+                self.current_local_base_path = target_base_path
+
+            adapter_path = role_config.get("adapter_path")
+            if adapter_path and os.path.exists(adapter_path):
+                print(f"[{role}] 어댑터 로드 중... ({adapter_path})")
+                self.model = PeftModel.from_pretrained(self.base_model, adapter_path)
             else:
-                print(f"[Local PEFT] 어댑터 전환: {role}\n")
-                if config["adapter_path"]:
-                    if role not in self.model.peft_config:
-                        self.model.load_adapter(config["adapter_path"], adapter_name=role)
-                    self.model.set_adapter(role)
-                    
-            print(f"[Local PEFT] '{role}' 역할 활성화 완료.\n")
+                print(f"[{role}] 어댑터를 찾을 수 없어 Base 모델로 동작합니다.")
+                self.model = self.base_model
 
         self.current_role = role
 
-    def parse_thinking_output(self, response: str) -> str:
-        """Gemma 4의 Thinking Mode 출력물에서 최종 답변만 추출합니다."""
+    @staticmethod
+    def parse_thinking_output(response: str) -> str:
         if "<channel|>" in response:
             return response.split("<channel|>")[-1].strip()
-        elif "</think>" in response:
+        if "</think>" in response:
             return response.split("</think>")[-1].strip()
-        # 태그가 아예 없는 경우 원본을 반환
         return response.strip()
 
     def chat(self, messages: list, role: str="base", max_tokens: int=2048, response_model: Optional[Type[BaseModel]] = None) -> Any:
