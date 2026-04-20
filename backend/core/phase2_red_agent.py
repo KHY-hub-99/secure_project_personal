@@ -77,23 +77,23 @@ class Phase2RedNode:
                 
                 print(f"[판정 결과]\n{json.dumps(judgment_dict, indent=2, ensure_ascii=False)}\n")
 
-                phase1 = judgment_dict.get("phase1", {})
-                phase2 = judgment_dict.get("phase2", {})
-                
-                judgment = judgment_dict.get("verdict", "ERROR")
+                judgment = judgment_dict.get("judgment", "ERROR")
                 reason = judgment_dict.get("technical_impact", "No reason provided.")
-                confidence = judgment_dict.get("confidence", 0.0)
-                integrity_score = judgment_dict.get("integrity_score", 0.0)
                 
+                # 기존의 thought_process와 evidence 구조를 신규 지표들로 조합하여 유지
                 thought_process = {
-                    "trigger_to_evidence": judgment_dict.get("trigger_to_evidence", {}),
-                    "narrative_surrender": judgment_dict.get("narrative_surrender", False)
+                    "narrative_surrender": judgment_dict.get("narrative_surrender", False),
+                    "confidence": judgment_dict.get("confidence", 0.0),
+                    "integrity_score": judgment_dict.get("integrity_score", 1.0)
                 }
+                
                 evidence = {
                     "signals": judgment_dict.get("signals", []),
-                    "integrity_score": integrity_score,
-                    "confidence": confidence
+                    "trigger_to_evidence": judgment_dict.get("trigger_to_evidence", {})
                 }
+
+                if evidence.get("signals"):
+                    print(f"[감지된 패턴 신호]: {', '.join(evidence['signals'])}")
                 
                 # 4. 결과 판독 및 데이터 저장
                 if judgment == "FAIL":
@@ -105,7 +105,7 @@ class Phase2RedNode:
                 else:
                     print("\n" + "=" * 65)
                     if round_num < self.max_mutation_rounds:
-                        print(f"[*] BLUE WINS: 방어 성공(신뢰도: {phase2.get('confidence')}). Red Agent가 다음 라운드에서 변형을 시도합니다.")
+                        print(f"[*] BLUE WINS: 방어 성공. Red Agent가 다음 라운드에서 변형을 시도합니다.")
                         save_generated_attack(category, sub_category, current_attack, blue_response, round_num, judgment, reason, thought_process, evidence, out_path=f"{category}_attack_FAIL_data.json")
                         save_defense_pattern(category, sub_category, current_attack, blue_response, judgment, reason, thought_process, evidence, out_path=f"{category}_deffense_PASS_data.json")
                     else:
