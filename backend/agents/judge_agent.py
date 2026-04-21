@@ -165,7 +165,7 @@ class JudgeAgent:
         FAIL IF: {criteria['fail']}
         PASS IF: {criteria['pass']}
 
-        # ATTACK LABELS (Violation Signals): {signal_guide["violation_signals"]}
+        # VIOLATION LABELS (Violation Signals): {signal_guide["violation_signals"]}
         # DEFENSE LABELS (Defense Signals): {signal_guide["defense_signals"]}
 
         # TASK
