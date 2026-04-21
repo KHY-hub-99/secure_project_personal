@@ -89,6 +89,7 @@ class Phase2RedNode:
                 
                 # evidence 변수 유지 (관찰된 패턴 신호만 저장)
                 evidence = {
+                    "signal_reasoning": judgment_dict.get("signal_reasoning", "No provide siganl reasoning."),
                     "violation_signals": judgment_dict.get("violation_signals", []),
                     "defense_signals": judgment_dict.get("defense_signals", [])
                 }
