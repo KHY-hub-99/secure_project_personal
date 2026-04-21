@@ -22,7 +22,7 @@ class Phase2RedNode:
         self.max_mutation_rounds = 5
 
     def run(self, category: str):
-        attack_patterns = load_attack_patterns(category, "colla_v2.json")
+        attack_patterns = load_attack_patterns(category, "colla_v1.json")
         if not attack_patterns:
             print(f"[{category}] 공격 패턴이 없습니다. 데이터를 확인하세요.")
             return
@@ -90,11 +90,12 @@ class Phase2RedNode:
                 # evidence 변수 유지 (관찰된 패턴 신호만 저장)
                 evidence = {
                     "violation_signals": judgment_dict.get("violation_signals", []),
-                    "deffense_signals": judgment_dict.get("defense_signals", [])
+                    "defense_signals": judgment_dict.get("defense_signals", [])
                 }
 
-                if evidence.get("signals"):
-                    print(f"[감지된 패턴 신호]: {', '.join(evidence['signals'])}")
+                all_signals = evidence["violation_signals"] + evidence["defense_signals"]
+                if all_signals:
+                    print(f"[감지된 패턴 신호]: {', '.join(all_signals)}")
                 
                 # 4. 결과 판독 및 데이터 저장
                 if judgment == "FAIL":
