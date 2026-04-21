@@ -42,9 +42,9 @@ def translate_json_values(data, translator, target_lang='ko', exclude_keys=None)
     else:
         return data
     
-def main():
-    source_file_path = os.path.join(root, "data", "attack_patterns", "LLM01_attack_PASS_data.json")
-    target_file_path = os.path.join(root, "data", "attack_data_kor.json")
+def main(category="LLM01", pf="PASS"):
+    source_file_path = os.path.join(root, "data", "attack_patterns", f"{category}_attack_{pf}_data.json")
+    target_file_path = os.path.join(root, "data", f"{category}_attack_data_kor.json")
 
     if not os.path.exists(source_file_path):
         print(f"오류: {source_file_path} 파일을 찾을 수 없습니다.")
@@ -64,4 +64,4 @@ def main():
         json.dump(translated_data, f, ensure_ascii=False, indent=4)
 
 if __name__ == "__main__":
-    main()
+    main("LLM01", "PASS")
