@@ -23,6 +23,7 @@ Thumbs.db
 
 # Data (용량 큰 파일)
 *.jsonl
+data/*.json
 data/attack_patterns/*.csv
 data/attack_patterns/*.json
 data/defense_patterns/*.json
